@@ -19,11 +19,13 @@ void ATerraCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	Health = MaxHealth;
+
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
-			Subsystem->AddMappingContext(ShooterInputMapping, 0);
+			Subsystem->AddMappingContext(TerraInputMapping, 0);
 		}
 	}
 
@@ -59,6 +61,16 @@ void ATerraCharacter::Move(const FInputActionValue& Value)
 	}
 }
 
+void ATerraCharacter::Primary(const FInputActionValue& Value)
+{
+
+}
+
+void ATerraCharacter::Secondary(const FInputActionValue& Value)
+{
+
+}
+
 // Called to bind functionality to input
 void ATerraCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -70,6 +82,8 @@ void ATerraCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ATerraCharacter::Look);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		EnhancedInputComponent->BindAction(PrimaryAction, ETriggerEvent::Triggered, this, &ATerraCharacter::Primary);
+		EnhancedInputComponent->BindAction(SecondaryAction, ETriggerEvent::Triggered, this, &ATerraCharacter::Secondary);
 	}
 }
 
