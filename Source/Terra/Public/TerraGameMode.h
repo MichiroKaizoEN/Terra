@@ -1,4 +1,4 @@
-// Copyright MichiroKaizoEN All Rights Reserved.
+// Copyright 2023 MichiroKaizoEN All Rights Reserved.
 
 #pragma once
 
