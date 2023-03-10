@@ -9,6 +9,7 @@
 
 class UInputMappingContext;
 class UInputAction;
+class UPrimitiveComponent;
 
 UCLASS()
 class TERRA_API ATerraCharacter : public ACharacter
@@ -21,6 +22,9 @@ public:
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	// This function is required for base replication to work properly, as voxel world components are generated at runtime & not replicated
+	virtual void SetBase(UPrimitiveComponent* NewBase, FName BoneName, bool bNotifyActor) override;
 
 protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

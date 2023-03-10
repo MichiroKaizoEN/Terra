@@ -4,62 +4,129 @@
 #include "TerraWorldGenerator.h"
 #include "FastNoise/VoxelFastNoise.inl"
 #include "VoxelMaterialBuilder.h"
+#include "VoxelGraph/Public/NodeFunctions/VoxelMathNodeFunctions.h"
 
 TVoxelSharedRef<FVoxelGeneratorInstance> UTerraWorldGenerator::GetInstance()
 {
-	return MakeVoxelShared<FVoxelGeneratorExampleInstance>(*this);
+	return MakeVoxelShared<FTerraGeneratorInstance>(*this);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelGeneratorExampleInstance::FVoxelGeneratorExampleInstance(const UTerraWorldGenerator& MyGenerator)
+FTerraGeneratorInstance::FTerraGeneratorInstance(const UTerraWorldGenerator& MyGenerator)
 	: Super(&MyGenerator)
 	, NoiseHeight(MyGenerator.NoiseHeight)
+	, NoiseScale(MyGenerator.NoiseScale)
+	, Frequency(MyGenerator.Frequency)
 	, Seed(MyGenerator.Seed)
+	, Octaves(MyGenerator.Octaves)
+	, OceanCurve(MyGenerator.OceanCurve)
+	, IslandCurve(MyGenerator.IslandCurve)
+	, LandCurve(MyGenerator.LandCurve)
+	, MountainCurve(MyGenerator.MountainCurve)
 {
 }
 
-void FVoxelGeneratorExampleInstance::Init(const FVoxelGeneratorInit& InitStruct)
+void FTerraGeneratorInstance::Init(const FVoxelGeneratorInit& InitStruct)
 {
 	Noise.SetSeed(Seed);
+	//OceanCurve->bIsEventCurve = false;
+	//IslandCurve->bIsEventCurve = false;
+	//LandCurve->bIsEventCurve = false;
+	//MountainCurve->bIsEventCurve = false;
 }
 
-v_flt FVoxelGeneratorExampleInstance::GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+v_flt FTerraGeneratorInstance::GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 {
-	const float Height = Noise.GetPerlin_2D(X, Y, 0.01f) * NoiseHeight;
+	// Z - (Noise * Noise scale + Base Height)
+	v_flt OceanMask;
+	v_flt IslandMask;
+	v_flt LandMask;
+	v_flt MountainMask;
+	// const float Height = Noise.GetPerlin_2D(X, Y, Frequency) * NoiseHeight;
+	const float Height = Noise.GetPerlinFractal_2D(X, Y, Frequency, Octaves);
+	const float Biome = Noise.GetCubicFractal_2D(X, Y, .0003f, Octaves);
 	
-	// Positive value -> empty voxel
-	// Negative value -> full voxel
-	// Value positive when Z > Height, and negative Z < Height
-	float Value = Z - Height;
 	
+	TVoxelStaticArray<v_flt, 6> ArrayIn;
+	TVoxelStaticArray<v_flt, 4> BiomeMask;
+	ArrayIn[0] = v_flt(-10.f);
+	ArrayIn[1] = v_flt(3.f);
+	ArrayIn[2] = v_flt(15.f);
+	ArrayIn[3] = v_flt(5.f);
+	ArrayIn[4] = v_flt(35.f);
+	ArrayIn[5] = v_flt(10.f);
+	FVoxelMathNodeFunctions::HeightSplit(Biome * 100,ArrayIn,BiomeMask);
 	// The voxel value is clamped between -1 and 1. That can result in a bad gradient/normal. To solve that we divide it
-	Value /= 5;
+	OceanMask = BiomeMask[0];
+	IslandMask = BiomeMask[1];
+	LandMask = BiomeMask[2];
+	MountainMask = BiomeMask[3];
+	
+	
+	float Ocean = FMath::Lerp(0.f, OceanCurve->GetFloatValue(Height), OceanMask);
+	float Islands = FMath::Lerp(Ocean, IslandCurve->GetFloatValue(Height), IslandMask);
+	float Land = FMath::Lerp(Islands, LandCurve->GetFloatValue(Height), LandMask);
+	float Mountains = FMath::Lerp(Land,  MountainCurve->GetFloatValue(Height), MountainMask);
 
+	float Value = Z - (Mountains * NoiseScale + NoiseHeight);
+	
+	//Value /= 5;
+	
 	return Value;
 }
 
-FVoxelMaterial FVoxelGeneratorExampleInstance::GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+FVoxelMaterial FTerraGeneratorInstance::GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 {
 	FVoxelMaterialBuilder Builder;
-
+	
 	// RGB
-	Builder.SetMaterialConfig(EVoxelMaterialConfig::RGB);
-	Builder.SetColor(FColor::Red);
+	//Builder.SetMaterialConfig(EVoxelMaterialConfig::RGB);
+	//Builder.SetColor(FColor::Red);
 
-	// Single index
+	//// Single index
 	//Builder.SetMaterialConfig(EVoxelMaterialConfig::SingleIndex);
 	//Builder.SetSingleIndex(0); 
 
-	// Multi index
-	//Builder.SetMaterialConfig(EVoxelMaterialConfig::MultiIndex);
-	//Builder.AddMultiIndex(0, 0.5f);
-	//Builder.AddMultiIndex(1, 0.5f);
+	v_flt OceanMask;
+	v_flt IslandMask;
+	v_flt LandMask;
+	v_flt MountainMask;
+
+	const float Biome = Noise.GetCubicFractal_2D(X, Y, .0003f, Octaves);
+
+
+	TVoxelStaticArray<v_flt, 6> ArrayIn;
+	TVoxelStaticArray<v_flt, 4> BiomeMask;
+	ArrayIn[0] = v_flt(-10.f);
+	ArrayIn[1] = v_flt(0.f);
+	ArrayIn[2] = v_flt(10.f);
+	ArrayIn[3] = v_flt(0.f);
+	ArrayIn[4] = v_flt(40.f);
+	ArrayIn[5] = v_flt(0.f);
+	FVoxelMathNodeFunctions::HeightSplit(Biome * 100, ArrayIn, BiomeMask);
+	// The voxel value is clamped between -1 and 1. That can result in a bad gradient/normal. To solve that we divide it
+	OceanMask = BiomeMask[0];
+	IslandMask = BiomeMask[1];
+	LandMask = BiomeMask[2];
+	MountainMask = BiomeMask[3];
+
+	//// Multi index
+	Builder.SetMaterialConfig(EVoxelMaterialConfig::MultiIndex);
+	Builder.AddMultiIndex(0, IslandMask);
+	Builder.AddMultiIndex(1, LandMask);
+	Builder.AddMultiIndex(2, LandMask);
+	Builder.AddMultiIndex(3, LandMask);
+	Builder.AddMultiIndex(4, MountainMask);
+	Builder.AddMultiIndex(5, OceanMask);
+	Builder.AddMultiIndex(6, LandMask);
+	Builder.AddMultiIndex(7, LandMask);
+	Builder.AddMultiIndex(8, LandMask);
 	
 	return Builder.Build();
 }
 
-TVoxelRange<v_flt> FVoxelGeneratorExampleInstance::GetValueRangeImpl(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
+TVoxelRange<v_flt> FTerraGeneratorInstance::GetValueRangeImpl(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 {
 	// Return the values that GetValueImpl can return in Bounds
 	// Used to skip chunks where the value does not change
@@ -80,7 +147,7 @@ TVoxelRange<v_flt> FVoxelGeneratorExampleInstance::GetValueRangeImpl(const FVoxe
 	return Value;
 }
 
-FVector FVoxelGeneratorExampleInstance::GetUpVector(v_flt X, v_flt Y, v_flt Z) const
+FVector FTerraGeneratorInstance::GetUpVector(v_flt X, v_flt Y, v_flt Z) const
 {
 	// Used by spawners
 	return FVector::UpVector;

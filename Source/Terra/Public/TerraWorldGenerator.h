@@ -11,6 +11,9 @@
 /**
  * 
  */
+
+class UCurveFloat;
+
 UCLASS(Blueprintable)
 class TERRA_API UTerraWorldGenerator : public UVoxelGenerator
 {
@@ -21,19 +24,39 @@ public:
 		float NoiseHeight = 10.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generator")
+		float NoiseScale = 1000.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generator")
+		float Frequency = 0.001f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generator")
 		int32 Seed = 1337;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generator")
+		float Octaves = 7.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generator")
+		UCurveFloat* OceanCurve;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generator")
+		UCurveFloat* IslandCurve;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generator")
+		UCurveFloat* LandCurve;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generator")
+		UCurveFloat* MountainCurve;
 	//~ Begin UVoxelGenerator Interface
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance() override;
 	//~ End UVoxelGenerator Interface
 };
 
-class FVoxelGeneratorExampleInstance : public TVoxelGeneratorInstanceHelper<FVoxelGeneratorExampleInstance, UTerraWorldGenerator>
+class FTerraGeneratorInstance : public TVoxelGeneratorInstanceHelper<FTerraGeneratorInstance, UTerraWorldGenerator>
 {
 public:
-	using Super = TVoxelGeneratorInstanceHelper<FVoxelGeneratorExampleInstance, UTerraWorldGenerator>;
+	using Super = TVoxelGeneratorInstanceHelper<FTerraGeneratorInstance, UTerraWorldGenerator>;
 
-	explicit FVoxelGeneratorExampleInstance(const UTerraWorldGenerator& MyGenerator);
+	explicit FTerraGeneratorInstance(const UTerraWorldGenerator& MyGenerator);
 
 	//~ Begin FVoxelGeneratorInstance Interface
 	virtual void Init(const FVoxelGeneratorInit& InitStruct) override;
@@ -48,6 +71,13 @@ public:
 
 private:
 	const float NoiseHeight;
+	const float NoiseScale;
+	const float Frequency;
 	const int32 Seed;
+	const int32 Octaves;
+	UCurveFloat* OceanCurve;
+	UCurveFloat* IslandCurve;
+	UCurveFloat* LandCurve;
+	UCurveFloat* MountainCurve;
 	FVoxelFastNoise Noise;
 };

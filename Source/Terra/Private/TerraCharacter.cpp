@@ -38,6 +38,21 @@ void ATerraCharacter::Tick(float DeltaTime)
 
 }
 
+void ATerraCharacter::SetBase(UPrimitiveComponent* NewBase, FName BoneName, bool bNotifyActor)
+{
+	if (NewBase)
+	{
+		AActor* BaseOwner = NewBase->GetOwner();
+		// LoadClass to not depend on the voxel module
+		static UClass* VoxelWorldClass = LoadClass<UObject>(nullptr, TEXT("/Script/Voxel.VoxelWorld"));
+		if (ensure(VoxelWorldClass) && BaseOwner && BaseOwner->IsA(VoxelWorldClass))
+		{
+			NewBase = Cast<UPrimitiveComponent>(BaseOwner->GetRootComponent());
+			ensure(NewBase);
+		}
+	}
+}
+
 void ATerraCharacter::Look(const FInputActionValue& Value)
 {
 	const FVector2D LookAxisValue = Value.Get<FVector2D>();
